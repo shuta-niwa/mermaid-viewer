@@ -1,0 +1,1181 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mermaid Viewer v2</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.6.1/mermaid.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Noto+Sans+JP:wght@300;400;500&display=swap');
+
+  :root {
+    --bg: #0f1117;
+    --surface: #161b27;
+    --surface2: #1e2535;
+    --border: #2a3347;
+    --accent: #4fffb0;
+    --accent2: #00cfff;
+    --text: #cdd6f4;
+    --muted: #6c7a96;
+    --error: #f38ba8;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Sans JP', sans-serif;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 20px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.3px;
+  }
+
+  .logo-icon {
+    width: 28px;
+    height: 28px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+  }
+  .logo .ver { color: var(--muted); font-size: 11px; margin-left: 4px; }
+
+  .header-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .theme-select {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    cursor: pointer;
+    outline: none;
+  }
+
+  .btn {
+    padding: 6px 14px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-size: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+    transition: all 0.15s;
+  }
+
+  .btn-primary { background: var(--accent); color: #0a0e17; }
+  .btn-primary:hover { background: #6fffc0; }
+  .btn-ghost { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+  .main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  .editor-pane {
+    width: 42%;
+    min-width: 280px;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--border);
+    flex-shrink: 0;
+    transition: width 0.25s ease, min-width 0.25s ease;
+    overflow: hidden;
+  }
+  .editor-pane.collapsed {
+    width: 0;
+    min-width: 0;
+    border-right: none;
+  }
+
+  .pane-header {
+    padding: 8px 14px;
+    font-size: 11px;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--muted);
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    gap: 12px;
+  }
+
+  .status-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 6px var(--accent);
+  }
+  .status-dot.error { background: var(--error); box-shadow: 0 0 6px var(--error); }
+
+  textarea {
+    flex: 1;
+    background: var(--surface);
+    color: var(--text);
+    border: none;
+    outline: none;
+    padding: 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    line-height: 1.7;
+    resize: none;
+    tab-size: 2;
+  }
+  textarea::selection { background: #2a3f5f; }
+
+  .templates {
+    padding: 8px 14px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    flex-shrink: 0;
+  }
+
+  .tpl-btn {
+    padding: 3px 10px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--muted);
+    font-size: 11px;
+    font-family: 'JetBrains Mono', monospace;
+    cursor: pointer;
+    transition: all 0.12s;
+  }
+  .tpl-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+
+  .preview-pane {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-width: 0;
+  }
+
+  .zoom-controls {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .zoom-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    height: 24px;
+    min-width: 24px;
+    padding: 0 6px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.12s;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .zoom-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .zoom-btn.icon { font-size: 15px; }
+
+  #zoomLabel {
+    font-size: 11px;
+    color: var(--muted);
+    min-width: 46px;
+    text-align: center;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .preview-content {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+    cursor: grab;
+    user-select: none;
+  }
+  .preview-content.grabbing { cursor: grabbing; }
+
+  .preview-content::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(circle, #2a3347 1px, transparent 1px);
+    background-size: 24px 24px;
+    opacity: 0.5;
+    pointer-events: none;
+  }
+
+  #zoom-wrapper {
+    position: absolute;
+    top: 0; left: 0;
+    transform-origin: 0 0;
+    will-change: transform;
+  }
+
+  #diagram-output {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    padding: 30px;
+    /* SVG の自然サイズを尊重し、横方向に伸びることを許可 */
+    width: max-content;
+    min-width: 100%;
+  }
+
+  .diagram-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.4);
+    overflow: visible;
+    width: max-content;
+    max-width: none;
+  }
+  .diagram-card.has-error { border-color: rgba(243, 139, 168, 0.4); }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 7px 14px;
+    font-size: 11px;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--muted);
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    border-radius: 12px 12px 0 0;
+  }
+  .card-title { display: flex; align-items: center; gap: 8px; }
+  .card-title .idx { color: var(--accent2); font-weight: 600; }
+  .card-title .size { color: var(--muted); opacity: 0.7; font-size: 10px; }
+  .card-actions { display: flex; gap: 6px; }
+  .card-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 2px 10px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-family: 'JetBrains Mono', monospace;
+    cursor: pointer;
+    transition: all 0.12s;
+  }
+  .card-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .card-body {
+    padding: 24px 32px;
+    /* SVG が自然サイズで描画されるよう、いかなる縮小も許さない */
+    display: inline-block;
+  }
+  /* Mermaid が SVG に注入する max-width / width:100% を打ち消す */
+  .card-body svg {
+    display: block;
+    max-width: none !important;
+    width: auto !important;
+    height: auto !important;
+  }
+
+  .card-error {
+    color: var(--error);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    padding: 14px;
+    background: rgba(243, 139, 168, 0.08);
+    border: 1px solid rgba(243, 139, 168, 0.3);
+    border-radius: 8px;
+    white-space: pre-wrap;
+    max-width: 720px;
+  }
+
+  .placeholder {
+    color: var(--muted);
+    font-size: 13px;
+    text-align: center;
+    font-family: 'JetBrains Mono', monospace;
+    padding: 40px;
+    line-height: 1.9;
+  }
+  .placeholder .hint {
+    display: block;
+    margin-top: 8px;
+    color: var(--muted);
+    opacity: 0.7;
+    font-size: 11px;
+  }
+  .placeholder kbd {
+    display: inline-block;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 6px;
+    margin: 0 2px;
+    font-size: 10px;
+    background: var(--surface2);
+    color: var(--text);
+  }
+
+  .toast {
+    position: fixed;
+    bottom: 20px; right: 20px;
+    background: var(--accent);
+    color: #0a0e17;
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 600;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: all 0.2s;
+    pointer-events: none;
+    z-index: 100;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+
+  .hint-bar {
+    padding: 6px 14px;
+    font-size: 10px;
+    color: var(--muted);
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    font-family: 'JetBrains Mono', monospace;
+    display: flex;
+    gap: 16px;
+    flex-shrink: 0;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+  .hint-bar kbd {
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    border-radius: 3px;
+    padding: 1px 5px;
+    color: var(--text);
+    font-size: 10px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">◈</div>
+    Mermaid Viewer<span class="ver">v2</span>
+  </div>
+  <div class="header-actions">
+    <select class="theme-select" id="themeSelect">
+      <option value="dark">dark</option>
+      <option value="default">light</option>
+      <option value="forest">forest</option>
+      <option value="neutral">neutral</option>
+      <option value="base">base</option>
+    </select>
+    <button class="btn btn-ghost" id="toggleBtn" onclick="toggleEditor()">◀ コード非表示</button>
+    <button class="btn btn-ghost" onclick="copySVG()">SVGコピー</button>
+    <button class="btn btn-ghost" onclick="downloadSVG()">SVG保存</button>
+    <select class="theme-select" id="pngBgSelect" title="PNG背景色">
+      <option value="auto">PNG bg: auto</option>
+      <option value="white">PNG bg: white</option>
+      <option value="dark">PNG bg: dark</option>
+      <option value="transparent">PNG bg: 透過</option>
+    </select>
+    <select class="theme-select" id="pngScaleSelect" title="PNG解像度">
+      <option value="1">PNG ×1</option>
+      <option value="2" selected>PNG ×2</option>
+      <option value="3">PNG ×3</option>
+      <option value="4">PNG ×4</option>
+    </select>
+    <button class="btn btn-ghost" onclick="copyPNG()">PNGコピー</button>
+    <button class="btn btn-ghost" onclick="downloadPNG()">PNG保存</button>
+    <button class="btn btn-primary" onclick="render()">描画</button>
+  </div>
+</header>
+
+<div class="main">
+  <div class="editor-pane">
+    <div class="pane-header">
+      <span>mermaid code</span>
+      <div class="status-dot" id="statusDot"></div>
+    </div>
+    <textarea id="editor" spellcheck="false" placeholder="Mermaidのコードを貼り付けてください..."></textarea>
+    <div class="templates">
+      <span style="color:var(--muted);font-size:11px;font-family:'JetBrains Mono',monospace;align-self:center;">template:</span>
+      <button class="tpl-btn" onclick="loadTemplate('flowchart')">flowchart</button>
+      <button class="tpl-btn" onclick="loadTemplate('sequence')">sequence</button>
+      <button class="tpl-btn" onclick="loadTemplate('class')">class</button>
+      <button class="tpl-btn" onclick="loadTemplate('er')">ER</button>
+      <button class="tpl-btn" onclick="loadTemplate('gantt')">Gantt</button>
+      <button class="tpl-btn" onclick="loadTemplate('state')">state</button>
+      <button class="tpl-btn" onclick="loadTemplate('multi')">multi (---)</button>
+      <button class="tpl-btn" onclick="loadTemplate('wide')">wide</button>
+    </div>
+  </div>
+
+  <div class="preview-pane">
+    <div class="pane-header">
+      <span>preview</span>
+      <div class="zoom-controls">
+        <button class="zoom-btn icon" onclick="zoomOut()" title="縮小 ( - )">−</button>
+        <span id="zoomLabel">100%</span>
+        <button class="zoom-btn icon" onclick="zoomIn()" title="拡大 ( + )">＋</button>
+        <button class="zoom-btn" onclick="fitToScreen()" title="全体表示 ( f )">fit</button>
+        <button class="zoom-btn" onclick="fitToWidth()" title="幅に合わせる ( w )">w-fit</button>
+        <button class="zoom-btn" onclick="actualSize()" title="等倍 ( 1 )">1:1</button>
+        <button class="zoom-btn icon" onclick="resetZoom()" title="リセット ( 0 )">⟳</button>
+      </div>
+    </div>
+    <div class="preview-content" id="previewContent" tabindex="0">
+      <div id="zoom-wrapper">
+        <div id="diagram-output">
+          <div class="placeholder">
+            ← Mermaidコードを入力して「描画」を押してください
+            <span class="hint">
+              <kbd>+</kbd> <kbd>-</kbd> 拡大縮小 ／ <kbd>f</kbd> 全体表示 ／ <kbd>w</kbd> 幅fit ／ <kbd>1</kbd> 等倍 ／ <kbd>0</kbd> リセット<br>
+              ホイール: ズーム ／ ドラッグ: パン ／ <kbd>Shift</kbd>+ホイール: 横スクロール相当<br>
+              --- を含む行で区切ると複数の図を一度に描画できます
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="hint-bar">
+      <span><kbd>+</kbd>/<kbd>-</kbd> ズーム</span>
+      <span><kbd>f</kbd> 全体</span>
+      <span><kbd>w</kbd> 幅fit</span>
+      <span><kbd>1</kbd> 等倍</span>
+      <span><kbd>0</kbd> リセット</span>
+      <span><kbd>Ctrl</kbd>+<kbd>Enter</kbd> 描画</span>
+      <span><kbd>ダブルクリック</kbd> 全体表示</span>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const TEMPLATES = {
+  flowchart: `flowchart TD
+    A[開始] --> B{条件分岐}
+    B -->|Yes| C[処理A]
+    B -->|No| D[処理B]
+    C --> E[終了]
+    D --> E`,
+
+  sequence: `sequenceDiagram
+    participant Client
+    participant API
+    participant DB
+    Client->>API: リクエスト送信
+    API->>DB: クエリ実行
+    DB-->>API: 結果返却
+    API-->>Client: レスポンス`,
+
+  class: `classDiagram
+    class Animal {
+      +String name
+      +int age
+      +makeSound()
+    }
+    class Dog {
+      +String breed
+      +fetch()
+    }
+    class Cat {
+      +boolean indoor
+      +purr()
+    }
+    Animal <|-- Dog
+    Animal <|-- Cat`,
+
+  er: `erDiagram
+    USER {
+      int id PK
+      string name
+      string email
+    }
+    ORDER {
+      int id PK
+      int user_id FK
+      date created_at
+    }
+    ITEM {
+      int id PK
+      string name
+      int price
+    }
+    USER ||--o{ ORDER : places
+    ORDER }|--|{ ITEM : contains`,
+
+  gantt: `gantt
+    title プロジェクト計画
+    dateFormat YYYY-MM-DD
+    section 設計
+    要件定義     :a1, 2025-01-01, 7d
+    基本設計     :a2, after a1, 7d
+    section 開発
+    バックエンド  :b1, after a2, 14d
+    フロントエンド :b2, after a2, 14d
+    section テスト
+    結合テスト    :c1, after b1, 7d`,
+
+  state: `stateDiagram-v2
+    [*] --> 待機中
+    待機中 --> 処理中 : リクエスト受信
+    処理中 --> 完了 : 成功
+    処理中 --> エラー : 失敗
+    エラー --> 待機中 : リトライ
+    完了 --> [*]`,
+
+  multi: `flowchart TD
+    A[開始] --> B{条件}
+    B -->|Yes| C[OK]
+    B -->|No| D[NG]
+---
+sequenceDiagram
+    participant Client
+    participant Server
+    Client->>Server: リクエスト
+    Server-->>Client: レスポンス
+---
+classDiagram
+    class User {
+      +String name
+      +login()
+    }`,
+
+  wide: `flowchart LR
+    A1[ステップ1] --> A2[ステップ2] --> A3[ステップ3] --> A4[ステップ4] --> A5[ステップ5]
+    A5 --> A6[ステップ6] --> A7[ステップ7] --> A8[ステップ8] --> A9[ステップ9] --> A10[ステップ10]
+    A10 --> A11[ステップ11] --> A12[ステップ12] --> A13[ステップ13] --> A14[ステップ14] --> A15[ステップ15]
+    A15 --> A16[完了]`
+};
+
+// ── Zoom & Pan ──
+let scale = 1, tx = 0, ty = 0;
+let dragging = false, startX, startY, startTx, startTy, dragMoved = false;
+// 大幅にズーム範囲を拡張：1/50 ～ 50倍
+const MIN_SCALE = 0.02;
+const MAX_SCALE = 50;
+// 倍率は乗算で変化させる（指数的に）
+const WHEEL_FACTOR = 1.15;   // ホイール一段
+const BUTTON_FACTOR = 1.25;  // ボタン一押し
+
+function clampScale(s) { return Math.min(MAX_SCALE, Math.max(MIN_SCALE, s)); }
+
+function applyTransform() {
+  document.getElementById('zoom-wrapper').style.transform =
+    `translate(${tx}px, ${ty}px) scale(${scale})`;
+  const pct = scale >= 1
+    ? Math.round(scale * 100)
+    : (scale * 100).toFixed(scale < 0.1 ? 1 : 0);
+  document.getElementById('zoomLabel').textContent = pct + '%';
+}
+
+function zoomAtCenter(factor) {
+  const pc = document.getElementById('previewContent');
+  const rect = pc.getBoundingClientRect();
+  zoomAt(rect.width / 2, rect.height / 2, factor);
+}
+function zoomAt(px, py, factor) {
+  const newScale = clampScale(scale * factor);
+  const ratio = newScale / scale;
+  tx = px - ratio * (px - tx);
+  ty = py - ratio * (py - ty);
+  scale = newScale;
+  applyTransform();
+}
+function zoomIn()  { zoomAtCenter(BUTTON_FACTOR); }
+function zoomOut() { zoomAtCenter(1 / BUTTON_FACTOR); }
+function resetZoom() { scale = 1; tx = 0; ty = 0; applyTransform(); }
+function actualSize() {
+  // 表示中央を中心に等倍へ
+  const pc = document.getElementById('previewContent');
+  const rect = pc.getBoundingClientRect();
+  zoomAt(rect.width / 2, rect.height / 2, 1 / scale);
+}
+
+// 図全体の実寸（zoom-wrapper の子の合計サイズ）を取得
+function getContentSize() {
+  const wrap = document.getElementById('zoom-wrapper');
+  const out = document.getElementById('diagram-output');
+  // 一旦 transform を無効化して実寸計測
+  const prev = wrap.style.transform;
+  wrap.style.transform = 'translate(0,0) scale(1)';
+  const r = out.getBoundingClientRect();
+  wrap.style.transform = prev;
+  return { w: r.width, h: r.height };
+}
+
+function fitToScreen() {
+  const pc = document.getElementById('previewContent');
+  const v = pc.getBoundingClientRect();
+  const c = getContentSize();
+  if (c.w === 0 || c.h === 0) return;
+  const margin = 24;
+  const sx = (v.width - margin * 2) / c.w;
+  const sy = (v.height - margin * 2) / c.h;
+  scale = clampScale(Math.min(sx, sy));
+  // センタリング
+  tx = (v.width - c.w * scale) / 2;
+  ty = (v.height - c.h * scale) / 2;
+  applyTransform();
+}
+
+function fitToWidth() {
+  const pc = document.getElementById('previewContent');
+  const v = pc.getBoundingClientRect();
+  const c = getContentSize();
+  if (c.w === 0) return;
+  const margin = 24;
+  scale = clampScale((v.width - margin * 2) / c.w);
+  tx = margin;
+  ty = margin;
+  applyTransform();
+}
+
+// ホイールズーム（カーソル位置中心）
+const previewContent = document.getElementById('previewContent');
+previewContent.addEventListener('wheel', e => {
+  // Shift+ホイールは横スクロール相当（パン）
+  if (e.shiftKey) {
+    e.preventDefault();
+    tx -= e.deltaY;
+    applyTransform();
+    return;
+  }
+  e.preventDefault();
+  const rect = e.currentTarget.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+  const factor = e.deltaY < 0 ? WHEEL_FACTOR : (1 / WHEEL_FACTOR);
+  zoomAt(mx, my, factor);
+}, { passive: false });
+
+// ドラッグパン
+previewContent.addEventListener('mousedown', e => {
+  if (e.button !== 0) return;
+  dragging = true;
+  dragMoved = false;
+  startX = e.clientX; startY = e.clientY;
+  startTx = tx; startTy = ty;
+  previewContent.classList.add('grabbing');
+});
+window.addEventListener('mousemove', e => {
+  if (!dragging) return;
+  const dx = e.clientX - startX;
+  const dy = e.clientY - startY;
+  if (Math.abs(dx) + Math.abs(dy) > 3) dragMoved = true;
+  tx = startTx + dx;
+  ty = startTy + dy;
+  applyTransform();
+});
+window.addEventListener('mouseup', () => {
+  dragging = false;
+  previewContent.classList.remove('grabbing');
+});
+
+// ダブルクリックで全体表示（ドラッグ直後は無視）
+previewContent.addEventListener('dblclick', () => {
+  if (dragMoved) return;
+  fitToScreen();
+});
+
+// キーボードショートカット
+window.addEventListener('keydown', e => {
+  // テキストエリア入力中はショートカット無効
+  const tag = (document.activeElement && document.activeElement.tagName) || '';
+  if (tag === 'TEXTAREA' || tag === 'INPUT' || tag === 'SELECT') return;
+  switch (e.key) {
+    case '+': case '=':
+      e.preventDefault(); zoomIn(); break;
+    case '-': case '_':
+      e.preventDefault(); zoomOut(); break;
+    case 'f': case 'F':
+      e.preventDefault(); fitToScreen(); break;
+    case 'w': case 'W':
+      e.preventDefault(); fitToWidth(); break;
+    case '1':
+      e.preventDefault(); actualSize(); break;
+    case '0':
+      e.preventDefault(); resetZoom(); break;
+  }
+});
+
+// 背景色の明るさに応じてテキスト色を自動調整
+function fixTextContrast(svgEl) {
+  function luminance(r, g, b) {
+    const a = [r, g, b].map(v => {
+      v /= 255;
+      return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+    });
+    return 0.2126 * a[0] + 0.7152 * a[1] + 0.0722 * a[2];
+  }
+
+  function parseColor(str) {
+    if (!str || str === 'none' || str === 'transparent') return null;
+    const tmp = document.createElement('div');
+    tmp.style.color = str;
+    document.body.appendChild(tmp);
+    const computed = getComputedStyle(tmp).color;
+    document.body.removeChild(tmp);
+    const m = computed.match(/\d+/g);
+    if (!m || m.length < 3) return null;
+    return { r: +m[0], g: +m[1], b: +m[2] };
+  }
+
+  svgEl.querySelectorAll('.node, .cluster').forEach(node => {
+    const shape = node.querySelector('rect, polygon, circle, ellipse, path');
+    if (!shape) return;
+    const fill = shape.getAttribute('fill') ||
+                 getComputedStyle(shape).fill ||
+                 shape.style.fill;
+    const color = parseColor(fill);
+    if (!color) return;
+    const lum = luminance(color.r, color.g, color.b);
+    if (lum > 0.4) {
+      node.querySelectorAll('text, .label, foreignObject span, .nodeLabel').forEach(el => {
+        el.style.color = '#111';
+        el.style.fill = '#111';
+      });
+    }
+  });
+}
+
+// SVG が自然サイズで描画されるように調整
+function normalizeSvgSize(svgEl) {
+  // Mermaid は <svg style="max-width: ...; height: ...;" ...> のように
+  // インライン style で max-width を設定するため、これを除去/上書きする
+  svgEl.style.maxWidth = 'none';
+  svgEl.style.width = 'auto';
+  svgEl.style.height = 'auto';
+
+  // viewBox があれば、それを width/height 属性として明示してネイティブサイズで描画
+  const vb = svgEl.getAttribute('viewBox');
+  if (vb) {
+    const parts = vb.split(/\s+|,/).map(Number);
+    if (parts.length === 4 && parts[2] > 0 && parts[3] > 0) {
+      svgEl.setAttribute('width', parts[2]);
+      svgEl.setAttribute('height', parts[3]);
+    }
+  }
+}
+
+// ── Mermaid ──
+let currentSVGs = [];
+
+function loadTemplate(name) {
+  document.getElementById('editor').value = TEMPLATES[name];
+  render();
+}
+
+function getTheme() {
+  return document.getElementById('themeSelect').value;
+}
+
+function splitDiagrams(code) {
+  const lines = code.split(/\r?\n/);
+  const blocks = [];
+  let current = [];
+  let frontmatterOpen = false;
+  let diagramHasContent = false;
+
+  const flush = () => {
+    const text = current.join('\n').trim();
+    if (text) blocks.push(text);
+    current = [];
+    diagramHasContent = false;
+    frontmatterOpen = false;
+  };
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    const isHr = /^-{3,}$/.test(trimmed);
+
+    if (isHr) {
+      if (frontmatterOpen) {
+        current.push(line);
+        frontmatterOpen = false;
+        continue;
+      }
+      if (!diagramHasContent) {
+        current.push(line);
+        frontmatterOpen = true;
+        continue;
+      }
+      flush();
+      continue;
+    }
+
+    current.push(line);
+    if (trimmed !== '') diagramHasContent = true;
+  }
+  flush();
+  return blocks;
+}
+
+function buildCard(index) {
+  const card = document.createElement('div');
+  card.className = 'diagram-card';
+  card.dataset.index = String(index);
+
+  const header = document.createElement('div');
+  header.className = 'card-header';
+
+  const title = document.createElement('div');
+  title.className = 'card-title';
+  const idx = document.createElement('span');
+  idx.className = 'idx';
+  idx.textContent = `図${index + 1}`;
+  const size = document.createElement('span');
+  size.className = 'size';
+  title.appendChild(idx);
+  title.appendChild(size);
+  header.appendChild(title);
+
+  const actions = document.createElement('div');
+  actions.className = 'card-actions';
+  const copyBtn = document.createElement('button');
+  copyBtn.type = 'button';
+  copyBtn.className = 'card-btn';
+  copyBtn.textContent = 'SVGコピー';
+  copyBtn.addEventListener('click', () => copyOne(index));
+  const saveBtn = document.createElement('button');
+  saveBtn.type = 'button';
+  saveBtn.className = 'card-btn';
+  saveBtn.textContent = 'SVG';
+  saveBtn.addEventListener('click', () => downloadOne(index));
+  const pngCopyBtn = document.createElement('button');
+  pngCopyBtn.type = 'button';
+  pngCopyBtn.className = 'card-btn';
+  pngCopyBtn.textContent = 'PNGコピー';
+  pngCopyBtn.addEventListener('click', () => copyPngOne(index));
+  const pngBtn = document.createElement('button');
+  pngBtn.type = 'button';
+  pngBtn.className = 'card-btn';
+  pngBtn.textContent = 'PNG';
+  pngBtn.addEventListener('click', () => downloadPngOne(index));
+  actions.appendChild(copyBtn);
+  actions.appendChild(saveBtn);
+  actions.appendChild(pngCopyBtn);
+  actions.appendChild(pngBtn);
+  header.appendChild(actions);
+
+  const body = document.createElement('div');
+  body.className = 'card-body';
+
+  card.appendChild(header);
+  card.appendChild(body);
+  return { card, body, size };
+}
+
+async function render() {
+  const code = document.getElementById('editor').value.trim();
+  const output = document.getElementById('diagram-output');
+  const dot = document.getElementById('statusDot');
+
+  if (!code) {
+    output.innerHTML = '<div class="placeholder">← Mermaidコードを入力して「描画」を押してください</div>';
+    dot.className = 'status-dot';
+    currentSVGs = [];
+    return;
+  }
+
+  const blocks = splitDiagrams(code);
+  currentSVGs = new Array(blocks.length).fill('');
+  output.innerHTML = '';
+  mermaid.initialize({
+    startOnLoad: false,
+    theme: getTheme(),
+    securityLevel: 'loose',
+    // 図の自動縮小を抑える
+    flowchart: { useMaxWidth: false },
+    sequence: { useMaxWidth: false },
+    gantt: { useMaxWidth: false },
+    journey: { useMaxWidth: false },
+    class: { useMaxWidth: false },
+    state: { useMaxWidth: false },
+    er: { useMaxWidth: false },
+    pie: { useMaxWidth: false },
+    requirement: { useMaxWidth: false },
+    mindmap: { useMaxWidth: false },
+    timeline: { useMaxWidth: false }
+  });
+
+  let anyError = false;
+
+  for (let i = 0; i < blocks.length; i++) {
+    const { card, body, size } = buildCard(i);
+    output.appendChild(card);
+
+    try {
+      const id = `mermaid-${Date.now()}-${i}`;
+      const { svg } = await mermaid.render(id, blocks[i]);
+      body.innerHTML = svg;
+      const svgEl = body.querySelector('svg');
+      if (svgEl) {
+        normalizeSvgSize(svgEl);
+        fixTextContrast(svgEl);
+        // サイズ表示
+        const w = svgEl.getAttribute('width') || Math.round(svgEl.getBoundingClientRect().width);
+        const h = svgEl.getAttribute('height') || Math.round(svgEl.getBoundingClientRect().height);
+        size.textContent = `${parseInt(w)}×${parseInt(h)}`;
+        // 出力 SVG にも反映（コピー/保存時にも自然サイズで取れるよう serialize）
+        currentSVGs[i] = svgEl.outerHTML;
+      } else {
+        currentSVGs[i] = svg;
+      }
+    } catch (e) {
+      anyError = true;
+      card.classList.add('has-error');
+      const msg = e.message || String(e);
+      body.innerHTML = `<div class="card-error">⚠ 構文エラー\n\n${msg}</div>`;
+      currentSVGs[i] = '';
+    }
+  }
+
+  dot.className = anyError ? 'status-dot error' : 'status-dot';
+
+  // 描画後は画面全体に収まるサイズへ自動調整。
+  // 小さい図なら 100% で見せたいので、scale が 1 を超える場合は 1 にキャップ。
+  requestAnimationFrame(() => {
+    const v = previewContent.getBoundingClientRect();
+    const c = getContentSize();
+    if (c.w === 0 || c.h === 0) { resetZoom(); return; }
+    const margin = 24;
+    const sx = (v.width - margin * 2) / c.w;
+    const sy = (v.height - margin * 2) / c.h;
+    const fitScale = Math.min(sx, sy);
+    if (fitScale >= 1) {
+      // 画面に余裕で収まるなら等倍で左上寄せ
+      scale = 1; tx = margin; ty = margin;
+    } else {
+      scale = clampScale(fitScale);
+      tx = (v.width - c.w * scale) / 2;
+      ty = (v.height - c.h * scale) / 2;
+    }
+    applyTransform();
+  });
+}
+
+function copyOne(i) {
+  const svg = currentSVGs[i];
+  if (!svg) { showToast('この図はコピーできません'); return; }
+  navigator.clipboard.writeText(svg).then(() => showToast(`図${i + 1} のSVGをコピーしました`));
+}
+
+function downloadOne(i) {
+  const svg = currentSVGs[i];
+  if (!svg) { showToast('この図は保存できません'); return; }
+  const blob = new Blob([svg], { type: 'image/svg+xml' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `diagram-${i + 1}.svg`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  showToast(`diagram-${i + 1}.svg を保存しました`);
+}
+
+function copySVG() {
+  const valid = currentSVGs.filter(s => s);
+  if (valid.length === 0) { showToast('先に描画してください'); return; }
+  const text = valid.join('\n\n');
+  navigator.clipboard.writeText(text).then(() => showToast(
+    valid.length === 1 ? 'SVGをコピーしました' : `${valid.length}件のSVGをコピーしました`
+  ));
+}
+
+// ── PNG 出力 ──
+function getPngBg() {
+  const v = document.getElementById('pngBgSelect').value;
+  if (v === 'transparent') return null;
+  if (v === 'white') return '#ffffff';
+  if (v === 'dark') return '#1f2020';
+  // auto: theme に追従
+  const theme = getTheme();
+  return theme === 'dark' ? '#1f2020' : '#ffffff';
+}
+function getPngScale() {
+  return parseInt(document.getElementById('pngScaleSelect').value, 10) || 2;
+}
+
+function svgToPngBlob(svgString, { scale = 2, bg = null } = {}) {
+  return new Promise((resolve, reject) => {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(svgString, 'image/svg+xml');
+    const svgEl = doc.documentElement;
+
+    // 寸法決定: width/height 属性 → viewBox の順
+    let w = parseFloat(svgEl.getAttribute('width'));
+    let h = parseFloat(svgEl.getAttribute('height'));
+    if (!w || !h) {
+      const vb = svgEl.getAttribute('viewBox');
+      if (vb) {
+        const p = vb.split(/[\s,]+/).map(Number);
+        if (p.length === 4) { w = p[2]; h = p[3]; }
+      }
+    }
+    if (!w || !h) { w = 800; h = 600; }
+
+    if (!svgEl.getAttribute('xmlns')) svgEl.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    svgEl.setAttribute('width', w);
+    svgEl.setAttribute('height', h);
+
+    const xml = new XMLSerializer().serializeToString(svgEl);
+    const url = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(xml);
+
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(w * scale));
+      canvas.height = Math.max(1, Math.round(h * scale));
+      const ctx = canvas.getContext('2d');
+      if (bg) {
+        ctx.fillStyle = bg;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob(blob => {
+        if (!blob) reject(new Error('toBlob に失敗しました'));
+        else resolve(blob);
+      }, 'image/png');
+    };
+    img.onerror = () => reject(new Error('SVGをImageに読み込めませんでした'));
+    img.src = url;
+  });
+}
+
+async function downloadPngOne(i) {
+  const svg = currentSVGs[i];
+  if (!svg) { showToast('この図は保存できません'); return; }
+  try {
+    const blob = await svgToPngBlob(svg, { scale: getPngScale(), bg: getPngBg() });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `diagram-${i + 1}.png`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    showToast(`diagram-${i + 1}.png を保存しました`);
+  } catch (e) {
+    showToast('PNG変換に失敗: ' + (e.message || e));
+  }
+}
+
+async function downloadPNG() {
+  const validIdx = currentSVGs.map((s, i) => (s ? i : -1)).filter(i => i >= 0);
+  if (validIdx.length === 0) { showToast('先に描画してください'); return; }
+  if (validIdx.length === 1) { await downloadPngOne(validIdx[0]); return; }
+  showToast(`${validIdx.length}件のPNGを保存中...`);
+  for (let k = 0; k < validIdx.length; k++) {
+    await downloadPngOne(validIdx[k]);
+    await new Promise(r => setTimeout(r, 120));
+  }
+}
+
+async function copyPngOne(i) {
+  const svg = currentSVGs[i];
+  if (!svg) { showToast('この図はコピーできません'); return; }
+  if (!window.ClipboardItem || !navigator.clipboard || !navigator.clipboard.write) {
+    showToast('このブラウザはPNGクリップボードに非対応'); return;
+  }
+  try {
+    const blob = await svgToPngBlob(svg, { scale: getPngScale(), bg: getPngBg() });
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+    showToast(`図${i + 1} のPNGをコピーしました`);
+  } catch (e) {
+    showToast('PNGコピーに失敗: ' + (e.message || e));
+  }
+}
+
+async function copyPNG() {
+  const validIdx = currentSVGs.map((s, i) => (s ? i : -1)).filter(i => i >= 0);
+  if (validIdx.length === 0) { showToast('先に描画してください'); return; }
+  // クリップボードは1枚しか入らないため、複数ある場合は先頭のみコピー
+  await copyPngOne(validIdx[0]);
+  if (validIdx.length > 1) showToast(`先頭の図のみコピー（全${validIdx.length}件中）`);
+}
+
+function downloadSVG() {
+  const validIdx = currentSVGs
+    .map((s, i) => (s ? i : -1))
+    .filter(i => i >= 0);
+  if (validIdx.length === 0) { showToast('先に描画してください'); return; }
+  if (validIdx.length === 1) { downloadOne(validIdx[0]); return; }
+  validIdx.forEach((idx, k) => {
+    setTimeout(() => {
+      const blob = new Blob([currentSVGs[idx]], { type: 'image/svg+xml' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `diagram-${idx + 1}.svg`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }, k * 150);
+  });
+  showToast(`${validIdx.length}件のSVGを保存中...`);
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+document.getElementById('editor').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); render(); }
+});
+document.getElementById('themeSelect').addEventListener('change', () => {
+  if (document.getElementById('editor').value.trim()) render();
+});
+
+// 初期表示は wide テンプレートでズーム挙動が分かりやすいように
+loadTemplate('flowchart');
+
+function toggleEditor() {
+  const pane = document.querySelector('.editor-pane');
+  const btn = document.getElementById('toggleBtn');
+  pane.classList.toggle('collapsed');
+  const collapsed = pane.classList.contains('collapsed');
+  btn.textContent = collapsed ? '▶ コード表示' : '◀ コード非表示';
+}
+</script>
+</body>
+</html>
