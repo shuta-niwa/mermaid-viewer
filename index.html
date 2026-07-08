@@ -7,7 +7,23 @@
 <title>Mermaid Viewer v2</title>
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="apple-touch-icon" href="favicon.svg">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.6.1/mermaid.min.js"></script>
+<script type="module">
+  // mermaid v11 (ESM) + ELK レイアウト。ELK はサブグラフ入りの TD フローを
+  // dagre より安定して縦方向に整列できる。
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+  window.mermaid = mermaid;
+  try {
+    const elkLayouts = (await import('https://cdn.jsdelivr.net/npm/@mermaid-js/layout-elk@0/dist/mermaid-layout-elk.esm.min.mjs')).default;
+    mermaid.registerLayoutLoaders(elkLayouts);
+  } catch (e) {
+    // ELK が読めない環境では dagre にフォールバック
+    const sel = document.getElementById('layoutSelect');
+    if (sel) { sel.value = 'dagre'; sel.querySelector('option[value="elk"]').disabled = true; }
+    console.warn('ELK layout unavailable, falling back to dagre:', e);
+  }
+  // 本体スクリプト（下部の従来 script）より後に実行されるので、ここで初回描画
+  if (typeof render === 'function') render();
+</script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Noto+Sans+JP:wght@300;400;500&display=swap');
 
@@ -630,6 +646,14 @@
     </div>
 
     <div class="ctl-group">
+      <span class="ctl-label">レイアウト</span>
+      <select class="theme-select" id="layoutSelect" title="フローチャートのレイアウトエンジン">
+        <option value="elk" selected>ELK（縦整列）</option>
+        <option value="dagre">dagre（標準）</option>
+      </select>
+    </div>
+
+    <div class="ctl-group">
       <span class="ctl-label">SVG</span>
       <div class="ctl-row">
         <button class="btn btn-ghost" onclick="copySVG()">SVGコピー</button>
@@ -1145,6 +1169,10 @@ function getTheme() {
   return document.getElementById('themeSelect').value;
 }
 
+function getLayout() {
+  return document.getElementById('layoutSelect').value;
+}
+
 function splitDiagrams(code) {
   const lines = code.split(/\r?\n/);
   const blocks = [];
@@ -1242,6 +1270,9 @@ function buildCard(index) {
 }
 
 async function render() {
+  // mermaid (ESM) 読込前に呼ばれた場合は、読込完了時の初回描画に任せる
+  if (!window.mermaid) return;
+
   const code = document.getElementById('editor').value.trim();
   const output = document.getElementById('diagram-output');
   const dot = document.getElementById('statusDot');
@@ -1259,6 +1290,7 @@ async function render() {
   mermaid.initialize({
     startOnLoad: false,
     theme: getTheme(),
+    layout: getLayout(),
     securityLevel: 'loose',
     // 図の自動縮小を抑える
     flowchart: { useMaxWidth: false },
@@ -1479,6 +1511,9 @@ document.getElementById('editor').addEventListener('keydown', e => {
   if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); render(); }
 });
 document.getElementById('themeSelect').addEventListener('change', () => {
+  if (document.getElementById('editor').value.trim()) render();
+});
+document.getElementById('layoutSelect').addEventListener('change', () => {
   if (document.getElementById('editor').value.trim()) render();
 });
 
