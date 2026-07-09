@@ -288,6 +288,15 @@
   }
   .preview-content.grabbing { cursor: grabbing; }
 
+  /* 図中のテキストは選択・コピー可能にする（パンはテキスト外から開始） */
+  .preview-content svg text,
+  .preview-content svg foreignObject,
+  .preview-content svg foreignObject * {
+    -webkit-user-select: text;
+    user-select: text;
+    cursor: text;
+  }
+
   .preview-content::before {
     content: '';
     position: absolute;
@@ -981,9 +990,15 @@ previewContent.addEventListener('wheel', e => {
   zoomAt(mx, my, factor);
 }, { passive: false });
 
-// ドラッグパン（マウス）
+// 図中のテキスト（SVG text / HTMLラベルの foreignObject）上かどうか
+function isDiagramText(el) {
+  return !!(el && el.closest && el.closest('text, foreignObject'));
+}
+
+// ドラッグパン（マウス）— テキスト上では文字選択を優先してパンしない
 previewContent.addEventListener('mousedown', e => {
   if (e.button !== 0) return;
+  if (isDiagramText(e.target)) return;
   dragging = true;
   dragMoved = false;
   startX = e.clientX; startY = e.clientY;
@@ -1004,9 +1019,9 @@ window.addEventListener('mouseup', () => {
   previewContent.classList.remove('grabbing');
 });
 
-// ダブルクリックで全体表示（ドラッグ直後は無視）
-previewContent.addEventListener('dblclick', () => {
-  if (dragMoved) return;
+// ダブルクリックで全体表示（ドラッグ直後・テキスト上の単語選択は無視）
+previewContent.addEventListener('dblclick', e => {
+  if (dragMoved || isDiagramText(e.target)) return;
   fitToScreen();
 });
 
