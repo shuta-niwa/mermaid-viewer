@@ -1020,9 +1020,10 @@ window.addEventListener('mouseup', () => {
   previewContent.classList.remove('grabbing');
 });
 
-// ダブルクリックで全体表示（ドラッグ直後・テキスト上の単語選択は無視）
+// ダブルクリックで全体表示（テキスト上の単語選択は無視）
+// パンは中ボタン専用になったため、左のダブルクリックがパン由来になることはない
 previewContent.addEventListener('dblclick', e => {
-  if (dragMoved || isDiagramText(e.target)) return;
+  if (isDiagramText(e.target)) return;
   fitToScreen();
 });
 
