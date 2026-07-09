@@ -282,7 +282,7 @@
     flex: 1;
     overflow: hidden;
     position: relative;
-    cursor: grab;
+    cursor: default;
     user-select: none;
     touch-action: none;
   }
@@ -744,7 +744,7 @@
             コードを入力して「描画」を押してください
             <span class="hint">
               <kbd>+</kbd> <kbd>-</kbd> 拡大縮小 ／ <kbd>f</kbd> 全体表示 ／ <kbd>w</kbd> 幅fit ／ <kbd>1</kbd> 等倍 ／ <kbd>0</kbd> リセット<br>
-              ホイール／ピンチ: ズーム ／ ドラッグ／一本指: パン ／ ダブルタップ: 全体表示<br>
+              ホイール／ピンチ: ズーム ／ 中ボタンドラッグ／一本指: パン ／ 左ドラッグ: テキスト選択 ／ ダブルタップ: 全体表示<br>
               --- を含む行で区切ると複数の図を一度に描画できます
             </span>
           </div>
@@ -759,6 +759,7 @@
       <span><kbd>0</kbd> リセット</span>
       <span><kbd>Ctrl</kbd>+<kbd>Enter</kbd> 描画</span>
       <span><kbd>ダブルクリック</kbd> 全体表示</span>
+      <span><kbd>中ドラッグ</kbd> パン</span>
     </div>
   </div>
 </div>
@@ -995,10 +996,10 @@ function isDiagramText(el) {
   return !!(el && el.closest && el.closest('text, foreignObject'));
 }
 
-// ドラッグパン（マウス）— テキスト上では文字選択を優先してパンしない
+// ドラッグパン（マウス中ボタン）— 左ドラッグはテキスト選択に使う
 previewContent.addEventListener('mousedown', e => {
-  if (e.button !== 0) return;
-  if (isDiagramText(e.target)) return;
+  if (e.button !== 1) return;
+  e.preventDefault(); // 中クリック既定のオートスクロールを抑止
   dragging = true;
   dragMoved = false;
   startX = e.clientX; startY = e.clientY;
