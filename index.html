@@ -1099,6 +1099,8 @@ window.addEventListener('keydown', e => {
   // テキストエリア入力中はショートカット無効
   const tag = (document.activeElement && document.activeElement.tagName) || '';
   if (tag === 'TEXTAREA' || tag === 'INPUT' || tag === 'SELECT') return;
+  // Ctrl/Cmd/Alt併用時はブラウザ既定の動作（Ctrl+Fの検索など）を優先
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
   switch (e.key) {
     case '+': case '=':
       e.preventDefault(); zoomIn(); break;
