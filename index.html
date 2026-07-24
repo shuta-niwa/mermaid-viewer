@@ -1530,6 +1530,38 @@ function showToast(msg) {
   setTimeout(() => t.classList.remove('show'), 2200);
 }
 
+// コードエディタでのテキスト選択に合わせて、プレビュー内の該当箇所へパン移動
+function panToPreviewElement(el) {
+  const pcRect = previewContent.getBoundingClientRect();
+  const elRect = el.getBoundingClientRect();
+  const scx = (elRect.left + elRect.width / 2) - pcRect.left;
+  const scy = (elRect.top + elRect.height / 2) - pcRect.top;
+  const contentX = (scx - tx) / scale;
+  const contentY = (scy - ty) / scale;
+  tx = pcRect.width / 2 - contentX * scale;
+  ty = pcRect.height / 2 - contentY * scale;
+  applyTransform();
+}
+
+function focusPreviewOnSelection() {
+  const editorEl = document.getElementById('editor');
+  const selected = editorEl.value.slice(editorEl.selectionStart, editorEl.selectionEnd).trim();
+  if (!selected) return;
+  const candidates = document.querySelectorAll('#diagram-output text, #diagram-output tspan, #diagram-output foreignObject *');
+  let match = null;
+  for (const c of candidates) {
+    if (c.children.length === 0 && c.textContent.trim() === selected) { match = c; break; }
+  }
+  if (!match) {
+    for (const c of candidates) {
+      if (c.children.length === 0 && c.textContent.trim().includes(selected)) { match = c; break; }
+    }
+  }
+  if (match) panToPreviewElement(match);
+}
+document.getElementById('editor').addEventListener('select', focusPreviewOnSelection);
+document.getElementById('editor').addEventListener('mouseup', focusPreviewOnSelection);
+
 document.getElementById('editor').addEventListener('keydown', e => {
   if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); render(); }
 });
