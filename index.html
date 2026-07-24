@@ -773,7 +773,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-const APP_VERSION = '2.02';
+const APP_VERSION = '2.03';
 document.title = `Mermaid Viewer v${APP_VERSION}`;
 document.querySelector('.ver').textContent = `v${APP_VERSION}`;
 
@@ -1543,10 +1543,15 @@ function panToPreviewElement(el) {
   applyTransform();
 }
 
+let lastFocusedSelection = null;
 function focusPreviewOnSelection() {
   const editorEl = document.getElementById('editor');
   const selected = editorEl.value.slice(editorEl.selectionStart, editorEl.selectionEnd).trim();
-  if (!selected) return;
+  if (!selected) { lastFocusedSelection = null; return; }
+  // 選択範囲が前回と同じなら再パンしない（同じ範囲でmouseup/selectが再発火しても手動パンを上書きしない）
+  const selKey = editorEl.selectionStart + ':' + editorEl.selectionEnd;
+  if (selKey === lastFocusedSelection) return;
+  lastFocusedSelection = selKey;
   const candidates = document.querySelectorAll('#diagram-output text, #diagram-output tspan, #diagram-output foreignObject *');
   let match = null;
   for (const c of candidates) {
