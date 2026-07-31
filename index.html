@@ -773,7 +773,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-const APP_VERSION = '2.03';
+const APP_VERSION = '2.04';
 document.title = `Mermaid Viewer v${APP_VERSION}`;
 document.querySelector('.ver').textContent = `v${APP_VERSION}`;
 
@@ -1408,10 +1408,18 @@ function getPngScale() {
   return parseInt(document.getElementById('pngScaleSelect').value, 10) || 2;
 }
 
+// ラベル内の <br> など HTML の void 要素が自己終了していないと、
+// image/svg+xml を厳格なXMLとしてパースした際にタグ不整合でエラーになるため補正する
+const VOID_TAGS = 'area|base|br|col|embed|hr|img|input|link|meta|param|source|track|wbr';
+const VOID_TAG_RE = new RegExp(`<(${VOID_TAGS})((?:[^>]*[^/>])?)>`, 'gi');
+function closeVoidTags(svgString) {
+  return svgString.replace(VOID_TAG_RE, '<$1$2/>');
+}
+
 function svgToPngBlob(svgString, { scale = 2, bg = null } = {}) {
   return new Promise((resolve, reject) => {
     const parser = new DOMParser();
-    const doc = parser.parseFromString(svgString, 'image/svg+xml');
+    const doc = parser.parseFromString(closeVoidTags(svgString), 'image/svg+xml');
     const svgEl = doc.documentElement;
 
     // 寸法決定: width/height 属性 → viewBox の順

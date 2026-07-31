@@ -26,3 +26,10 @@ title・ヘッダーロゴの表示はどちらもここから生成される（
 選択範囲が前回と同じ場合は何もしない（`lastFocusedSelection`でガード）。
 中ボタンドラッグでプレビューを手動パンした後、同一選択のまま`mouseup`/`select`が
 再発火しても手動パンの結果を上書きしないようにするため。
+
+### PNG変換前のvoid要素補正
+ノードラベルに`<br>`（改行）を含めると、mermaidが出力するSVGのforeignObject内HTMLに
+自己終了していない`<br>`が残る。これを`image/svg+xml`として厳格なXMLパースにかけると
+タグ不整合でパースエラーになり、PNGコピー/保存が「SVGをImageに読み込めませんでした」で
+失敗する。`svgToPngBlob`に渡す前に`closeVoidTags()`でHTMLのvoid要素を自己終了形式
+（`<br/>`等）に補正してから`DOMParser`に渡す。
