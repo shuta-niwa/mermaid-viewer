@@ -33,3 +33,13 @@ title・ヘッダーロゴの表示はどちらもここから生成される（
 タグ不整合でパースエラーになり、PNGコピー/保存が「SVGをImageに読み込めませんでした」で
 失敗する。`svgToPngBlob`に渡す前に`closeVoidTags()`でHTMLのvoid要素を自己終了形式
 （`<br/>`等）に補正してから`DOMParser`に渡す。
+
+### 日本語ラベルの折り返し（themeCSS）
+mermaidのラベルは`white-space: nowrap`かつ幅上限`wrappingWidth`（既定200px）を持ち、
+mermaid自身の折り返しは空白区切り前提のため、空白のない日本語の長文は改行できず
+foreignObjectの右端で切れる。`LABEL_WRAP_CSS`（`white-space: normal` /
+`word-break: break-word`）を`mermaid.initialize`の**`themeCSS`**として渡して解決している。
+
+`themeCSS`である点が重要で、mermaidがこのCSSをSVG内の`<style>`に埋め込むため
+①ノードサイズ計測時（描画時）②PNG化時（ページCSSが効かない単体SVGコンテキスト）
+の両方で折り返しが有効になる。ページ側の`<style>`に書くと①だけ効いてPNGで切れる。

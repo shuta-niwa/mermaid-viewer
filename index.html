@@ -773,7 +773,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-const APP_VERSION = '2.04';
+const APP_VERSION = '2.05';
 document.title = `Mermaid Viewer v${APP_VERSION}`;
 document.querySelector('.ver').textContent = `v${APP_VERSION}`;
 
@@ -1292,6 +1292,19 @@ function buildCard(index) {
   return { card, body, size };
 }
 
+// mermaid のラベルは white-space: nowrap で幅上限(wrappingWidth=200px)を持つため、
+// 空白のない日本語の長文は折り返せず右端で切れる。themeCSS で渡すと mermaid が
+// SVG 内の <style> に入れてくれるので、ノードサイズの計測時にもPNG化時にも効く。
+const LABEL_WRAP_CSS = `
+  .nodeLabel, .nodeLabel p,
+  .edgeLabel, .edgeLabel p,
+  .cluster-label, .cluster-label p,
+  .label > foreignObject div {
+    white-space: normal !important;
+    word-break: break-word !important;
+  }
+`;
+
 async function render() {
   // mermaid (ESM) 読込前に呼ばれた場合は、読込完了時の初回描画に任せる
   if (!window.mermaid) return;
@@ -1315,6 +1328,7 @@ async function render() {
     theme: getTheme(),
     layout: getLayout(),
     securityLevel: 'loose',
+    themeCSS: LABEL_WRAP_CSS,
     // 図の自動縮小を抑える
     flowchart: { useMaxWidth: false },
     sequence: { useMaxWidth: false },
